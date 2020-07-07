@@ -31,7 +31,7 @@ public class ResourceTracker implements IOFMessageListener, IFloodlightModule {
     @Override
     public String getName() {
         // TODO Auto-generated method stub
-        return HeapTracker.class.getSimpleName();
+        return ResourceTracker.class.getSimpleName();
     }
  
     @Override
@@ -70,7 +70,7 @@ public class ResourceTracker implements IOFMessageListener, IFloodlightModule {
             throws FloodlightModuleException {
            floodlightProvider = context.getServiceImpl(IFloodlightProviderService.class);
             //macAddresses = new ConcurrentSkipListSet<Long>();
-            logger = LoggerFactory.getLogger(HeapTracker.class);
+            logger = LoggerFactory.getLogger(ResourceTracker.class);
  
     }
  
