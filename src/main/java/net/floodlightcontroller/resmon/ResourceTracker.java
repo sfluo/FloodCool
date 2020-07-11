@@ -14,6 +14,18 @@ import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
+import net.floodlightcontroller.packet.IPv4;
+import net.floodlightcontroller.packet.IPv6;
+import net.floodlightcontroller.packet.TCP;
+import net.floodlightcontroller.packet.UDP;
+
+
+import org.projectfloodlight.openflow.protocol.OFFlowRemoved;
+import org.projectfloodlight.openflow.types.EthType;
+import org.projectfloodlight.openflow.types.IPv4Address;
+import org.projectfloodlight.openflow.types.IPv6Address;
+import org.projectfloodlight.openflow.types.IpProtocol;
+import org.projectfloodlight.openflow.protocol.match.MatchField;
 
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import java.util.ArrayList;
@@ -88,27 +100,84 @@ public class ResourceTracker implements IOFMessageListener, IFloodlightModule {
                                             IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
  
         Long sourceMACHash = eth.getSourceMACAddress().getLong();
-
         logger.info("MAC Address: {} seen on switch: {}",
                     eth.getSourceMACAddress().toString(),
                     sw.getId().toString());
+  
+         switch (msg.getType()) {
+            case PACKET_IN:
+                logger.info("#FC### PACKET_IN ");
+                if (eth.getEtherType() == EthType.IPv4) {
+                    IPv4 ip = (IPv4) eth.getPayload();
+                    IPv4Address srcIp = ip.getSourceAddress();
+                    IPv4Address dstIp = ip.getDestinationAddress();
+                    
+                    logger.info("#FC### IPv4 src IP " + ((srcIp != null) ? srcIp.toString() : "")
+                        + ", dst IP " + ((dstIp != null) ? dstIp.toString() : "")
+                        + ", fragment" + (ip.isFragment() ? ip.getFragmentOffset() : 0)
+                        + ", len ", ip.getTotalLength());
+                
+                    if (ip.getProtocol().equals(IpProtocol.TCP)) {
+                        TCP tcp = (TCP) ip.getPayload();
+                        logger.info("TCP: src port" + (short)tcp.getSourcePort().getPort()
+                            + ", dst port " + (short)tcp.getDestinationPort().getPort()
+                            + ", seq " + tcp.getSequence()
+                            + ", ack " + tcp.getAcknowledge());
+
+                    } else if (ip.getProtocol().equals(IpProtocol.UDP)) {
+                        UDP udp = (UDP) ip.getPayload();
+                
+                        logger.info("UDP: src port" + (short)udp.getSourcePort().getPort()
+                            + ", dst port " + (short)udp.getDestinationPort().getPort()
+                            + ", len " + udp.getLength());
+                    }
+                } else if (eth.getEtherType() == EthType.ARP) { /* shallow check for equality is okay for EthType */
+                    logger.info("#FC### ARP packet received.");
+                } else if (eth.getEtherType() == EthType.IPv6) {
+                    IPv6 ip = (IPv6) eth.getPayload();
+                    IPv6Address srcIp = ip.getSourceAddress();
+                    IPv6Address dstIp = ip.getDestinationAddress();
+                    
+                    logger.info("#FC### IPv6 src IP " + ((srcIp != null) ? srcIp.toString() : "null")
+                        + ", dst IP " + ((dstIp != null) ? dstIp.toString() : "null"));
+
+                    if (ip.getNextHeader().equals(IpProtocol.TCP)) {
+                        TCP tcp = (TCP) ip.getPayload();
+                        logger.info("TCP: src port" + (short)tcp.getSourcePort().getPort()
+                            + ", dst port " + (short)tcp.getDestinationPort().getPort()
+                            + ", seq " + tcp.getSequence()
+                            + ", ack " + tcp.getAcknowledge());
+
+                    } else if (ip.getNextHeader().equals(IpProtocol.UDP)) {
+                        UDP udp = (UDP) ip.getPayload();
+                        logger.info("UDP: src port" + (short)udp.getSourcePort().getPort()
+                            + ", dst port " + (short)udp.getDestinationPort().getPort()
+                            + ", len " + udp.getLength());
+                    }
+                }
+                break;
+            case FLOW_REMOVED:
+                try {
+                    OFFlowRemoved flowRemoved = (OFFlowRemoved) msg;
+                    IPv4Address ip = flowRemoved.getMatch().get(MatchField.IPV4_SRC);
+                    logger.info("#FC### FLOW_REMOVED - Match IP SRC {};", ip.toString());
+                } catch (Exception e) {
+                    logger.info("$$$$$$$$$$$");
+                }
+                break;
+            default:
+                logger.info("#FC### unknown packet type {}", msg.getType());
+                break;
+        }
 
         int mb = 1024*1024;
 
         //Getting the runtime reference from system
         Runtime runtime = Runtime.getRuntime();
-
-        logger.info("##### Heap utilization statistics [MB] #####");
-        //Print used memory
+        logger.info("#FC### Heap utilization statistics [MB] #####");
         logger.info("Used Memory:" + (runtime.totalMemory() - runtime.freeMemory()) / mb);
-
-        //Print free memory
         logger.info("Free Memory:" + runtime.freeMemory() / mb);
-
-        //Print total available memory
         logger.info("Total Memory:" + runtime.totalMemory() / mb);
-
-        //Print Maximum available memory
         logger.info("Max Memory:" + runtime.maxMemory() / mb);
 
         return Command.CONTINUE;

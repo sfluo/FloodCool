@@ -244,7 +244,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
 		.setActions(actions)
 		.build();
 //		messageDamper.write(sw, defaultFlow);
-		log.info("###### MESSAGE");
+		log.info("#FC### MESSAGE to SW: dropEntry src IP {} with hard/idle timeout interval=5", ip.toString());
 		sw.write(defaultFlow);
 		
     }
@@ -274,6 +274,8 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
                 		if (StatisticsCollector.hostFlowMap.containsKey(srcIp)) {
 //                			if (StatisticsCollector.hostFlowMap.get(srcIp).level == 1) return Command.STOP;
                 			StatisticsCollector.hostFlowMap.get(srcIp).piCopy += 1;
+                            log.info("#FC### PacketIn count " + StatisticsCollector.hostFlowMap.get(srcIp).piCopy 
+                                + ", piHigh " + ShieldManager.piHigh);
                 			if (StatisticsCollector.hostFlowMap.get(srcIp).piCopy > ShieldManager.piHigh) {
                 				installDropEntry(srcIp, sw);
                 			}
@@ -310,6 +312,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
                 return Command.CONTINUE;
             case FORWARD_OR_FLOOD:
             case FORWARD:
+                log.info("#FC### Shield: FORWARD.");
                 doForwardFlow(sw, pi, decision, cntx, true);
                 return Command.CONTINUE;
             case MULTICAST:
@@ -804,6 +807,10 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
             log.trace("Writing flood PacketOut switch={} packet-in={} packet-out={}",
                     new Object[] {sw, pi, pob.build()});
         }
+        
+        log.info("#FC### Writing flood PacketOut switch={} packet-in={} packet-out={}",
+                    new Object[] {sw, pi, pob.build()});
+
         messageDamper.write(sw, pob.build());
 
         return;

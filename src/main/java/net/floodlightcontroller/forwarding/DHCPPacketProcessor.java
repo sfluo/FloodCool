@@ -256,6 +256,10 @@ public class DHCPPacketProcessor {
 		.setIdleTimeout(0)
 		.build();
 
+        log.info("#FC### MESSAGE to SW: IPMACBind ip " + ip.toString() 
+            + ", mac " + mac.toString()
+            + ", port "  + port.toString());
+
 		sw.write(defaultFlow3);
 		sw.write(defaultFlow4);
     }
